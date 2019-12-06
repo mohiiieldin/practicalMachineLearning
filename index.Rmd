@@ -15,7 +15,6 @@ output:
 ### Load packages and data
 
 ```{r , echo=FALSE}
-library(dplyr)
 library(ggplot2)
 library(caret)
 library(rpart)
@@ -69,6 +68,11 @@ dim(testing)
 Given some informations from accelometers what is the manner the participant used ? the model should classify a manner from 5 different types.
 
 
+## target variable representation
+```{r}
+plot(training$classe , main = "different classes for our target variable" , col = "yellow3")
+```
+
 
 ## Preparing for building a model 
 
@@ -102,7 +106,7 @@ training1 = training[-ind,]
 ### 1) bagging using CART:
 ```{r}
 set.seed(seed)
-bagging.fit <- train(classe ~ . ,method = "treebag"  , data = training )
+bagging.fit <- train(classe ~ . ,method = "treebag"  , data = training , trControl = control)
 bagging.pred <- predict(bagging.fit , validation)
 bagging.acc <- accuracy(bagging.pred , validation$classe)
 bagging.acc
@@ -114,7 +118,7 @@ bagging.acc
 ```{r}
 
 set.seed(seed)
-rf.fit <- randomForest(classe ~ ., data = training )
+rf.fit <- randomForest(classe ~ ., data = training , trControl = control)
 
 rf.pred <- predict(rf.fit , validation)
 rf.acc <- accuracy(rf.pred,validation$classe)
@@ -154,7 +158,7 @@ gbm.acc
 
 
 ```{r}
-#plot(gbm.fit)
+plot(gbm.fit)
 ```
 
 
