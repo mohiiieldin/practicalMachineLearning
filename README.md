@@ -2,5 +2,5 @@
 
 #### i used several algorithms like bagging with CART, boosting with GBM, random forests and model stack.
 
-# [Click here to ee the HTML preview](http://htmlpreview.github.io/?https://github.com/mohiiieldin/practicalMachineLearning/blob/gh-pages/index.html)
+# [Click here to see the HTML preview on github pages](http://htmlpreview.github.io/?https://github.com/mohiiieldin/practicalMachineLearning/blob/gh-pages/index.html)
 
