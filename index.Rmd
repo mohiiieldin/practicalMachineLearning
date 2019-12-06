@@ -1,32 +1,178 @@
 ---
-title: "index.Rmd"
+title: "Practical machine learning project"
 author: "mohie eldin"
-date: "December 3, 2019"
+date: "December 2, 2019"
 output: 
-  html_document: 
+  html_document:
+    fig_height: 4
+    highlight: pygments
     keep_md: yes
+    theme: spacelab
+    toc: yes
 ---
+## Setup
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+### Load packages and data
+
+```{r , echo=FALSE}
+library(dplyr)
+library(ggplot2)
+library(caret)
+library(rpart)
+library(randomForest)
+library(gbm)
+library(mlbench)
+library(e1071)
+library(ISLR)
+library(ada)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+## Data description
+The dataset information from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to predict the manner in which they did the exercis, hence we can conclude how good a participant did the excersise. 
 
-```{r cars}
-summary(cars)
+####  generabizability : 
+The data is `randomly` sampled and it's big enough (19000 observations) so the generabizability princple is achieved.
+
+#### Removing columns with a lot of null/empty values, columns that are highly correlated and also the first 7 variables are not useful information.
+```{r}
+training <- read.csv("E:/Coursera data science specialization/7. Practical machine learning/project/pml-training.csv")
+testing <- read.csv("E:/Coursera data science specialization/7. Practical machine learning/project/pml-testing.csv")
+
+
+training <- training[,-which(colMeans(is.na(training) | training == "" ) > 0.7)] 
+testing <- testing[,-which(colMeans(is.na(testing) | testing == "")  > 0.7)]
+training <- training[,-c(1:7)]
+testing <- testing[,-c(1:7)]
+# checking weather there are factor variables or not 
+which(sapply(training , is.factor))
+
 ```
 
-## Including Plots
+#### We don't have any factor variable except our target variable now so i can test the correlation on all the variables. 
 
-You can also embed plots, for example:
+```{r}
+corMat <- cor(subset(training , select = -classe ))
+highlyCor <- findCorrelation(corMat , cutoff = 0.90)
+print(highlyCor)
+#removing the highly correlated variavbles :
+training <- training[,-highlyCor] 
+testing <- testing[,-highlyCor]
+dim(training)
+dim(testing)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```
+#### So i reduced the number of columns to 43.
+
+## Research question
+Given some informations from accelometers what is the manner the participant used ? the model should classify a manner from 5 different types.
+
+
+
+## Preparing for building a model 
+
+#### I will split the training data into training and validation sets in order to see the performanc of the different models using the validation set.
+```{r}
+inTrain <- createDataPartition(y = training$classe , p = 0.7 , list = FALSE)
+training <- training[inTrain,]
+validation <- training[-inTrain,] #for testing models performance
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+#### Constuct the control for the models, i will use repreated cross validation technique with 5 folds and 5 repeats with random search to increase speed of the models.
+
+```{r}
+control <- trainControl(method = "repeatedcv" , number = 5 ,  repeats = 5, search = "random" )
+seed <- 1
+accuracy <- function(predictions , truth) 
+{
+  sum(predictions == truth)/length(truth)
+}
+```
+
+```{r , include=FALSE}
+ind <- createDataPartition(y = training$classe , p = 0.8 , list = FALSE)
+training1 = training[-ind,]
+
+```
+
+## model selection 
+
+### 1) bagging using CART:
+```{r}
+set.seed(seed)
+bagging.fit <- train(classe ~ . ,method = "treebag"  , data = training )
+bagging.pred <- predict(bagging.fit , validation)
+bagging.acc <- accuracy(bagging.pred , validation$classe)
+bagging.acc
+
+```
+#### It gave very good accuracy, let's  see if it will be the best of them or not 
+
+### 2) random Forests :
+```{r}
+
+set.seed(seed)
+rf.fit <- randomForest(classe ~ ., data = training )
+
+rf.pred <- predict(rf.fit , validation)
+rf.acc <- accuracy(rf.pred,validation$classe)
+rf.acc
+
+
+```
+#### We see that random forests gave perfect accuracy .
+
+```{r}
+plot(rf.fit , main = "Error by number of trees")
+
+```
+#### The graph is showing that between 30-40 trees is the perfect number as the error is the same from this number.
+
+#### Predictors importance
+```{r}
+
+print(varImp(rf.fit) )
+varImpPlot(rf.fit)
+```
+
+
+### 3) Boosting using gradient boosting machine 
+```{r}
+set.seed(seed)
+gbm.fit <- train(classe ~ . , method = "gbm" , data = training1 , verbose = FALSE )
+
+
+gbm.pred <- predict(gbm.fit , validation)
+gbm.acc <- accuracy(gbm.pred,validation$classe)
+gbm.acc
+
+```
+
+#### the gbm didn't perform as rf or cart.
+
+
+```{r}
+#plot(gbm.fit)
+```
+
+
+### 4) Stacked model using all the above algorithms with trees(rpart):
+```{r}
+set.seed(seed)
+combinedDF <- data.frame(bagging.pred ,rf.pred,gbm.pred, classe = validation$classe)
+stack.fit <- train(classe ~ . , method = "rf" , data = combinedDF , trControl = control )
+
+stack.pred.validation <- predict(stack.fit , validation)
+accuracy(stack.pred.validation , validation$classe)
+
+
+
+```
+
+#### As predicted the stacked model got accuracy 1 as it will always be best of any single model and we aleady got 1 wirh rf.
+
+## Conclusion 
+
+##### We end up that random forest is the best model as although the stacked model got the same accuracy but it's more complex than a single model so i would perefere the random forest model for this data set.
