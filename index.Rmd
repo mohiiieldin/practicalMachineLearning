@@ -14,7 +14,7 @@ output:
 
 ### Load packages and data
 
-```{r , echo=FALSE}
+```{r , message=FALSE}
 library(ggplot2)
 library(caret)
 library(rpart)
@@ -70,7 +70,7 @@ Given some informations from accelometers what is the manner the participant use
 
 ## target variable representation
 ```{r}
-plot(training$classe , main = "different classes for our target variable" , col = "yellow3")
+plot(training$classe , main = "different classes for our target variable" , col = "yellow2")
 ```
 
 
@@ -132,13 +132,14 @@ rf.acc
 plot(rf.fit , main = "Error by number of trees")
 
 ```
+
 #### The graph is showing that between 30-40 trees is the perfect number as the error is the same from this number.
 
 #### Predictors importance
 ```{r}
 
 print(varImp(rf.fit) )
-varImpPlot(rf.fit)
+
 ```
 
 
